@@ -3,110 +3,455 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>PuzzleFace PRO - Mobile + Desktop</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<title>Puzzle Cam Pro - Ultimate Edition</title>
 <style>
-:root{--accent:#FFD60A;--bg:#0B0B0F;--card:#15151C;--border:#24242E}
-*{box-sizing:border-box;margin:0;padding:0;touch-action:none}
-body{background:radial-gradient(1200px at 50% -10%,#1a1a28 0%,var(--bg) 60%);color:#fff;font-family:'Cairo',sans-serif;min-height:100vh;display:flex;flex-direction:column}
-header{height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--border)}
-.logo{font-weight:800} .logo span{color:var(--accent)}
-.stats{display:flex;gap:8px;font-family:'JetBrains Mono',monospace;font-size:11px}
-.stat{background:var(--card);border:1px solid var(--border);padding:6px 10px;border-radius:999px} .stat b{color:var(--accent)}
-main{flex:1;display:grid;grid-template-columns:1.2fr .8fr;gap:20px;padding:16px;max-width:1400px;margin:0 auto;width:100%}
-@media(max-width:900px){main{grid-template-columns:1fr} .camera-wrap{aspect-ratio:3/4 !important}}
-.camera-wrap{position:relative;background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden;aspect-ratio:4/3}
-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
-canvas{position:absolute;inset:0;width:100%;height:100%}
-.scan-line{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:300px;height:300px;border:2px solid var(--accent);border-radius:16px;pointer-events:none;box-shadow:0 0 0 4000px rgba(0,0,0,.35) inset}
-@media(max-width:600px){.scan-line{width:260px;height:260px}}
-.count{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:120px;font-weight:800;color:var(--accent);pointer-events:none}
-.side{display:flex;flex-direction:column;gap:14px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px}
-.btn{width:100%;background:var(--accent);color:#000;font-weight:800;font-size:16px;padding:14px;border:none;border-radius:12px;cursor:pointer}
-.levels{display:flex;gap:8px} .level{flex:1;padding:10px;border-radius:10px;background:#0f0f14;border:1px solid var(--border);cursor:pointer;text-align:center;font-size:13px} .level.active{background:var(--accent);color:#000;font-weight:700}
-.win{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:99} .win.show{display:flex} .win-box{background:#16161e;border:1px solid #2a2a36;border-radius:24px;padding:32px;text-align:center}
+  :root {
+    --primary: #FFD60A;
+    --success: #00FF88;
+    --bg: #050505;
+    --panel: rgba(18, 18, 18, 0.85);
+    --border: rgba(255, 255, 255, 0.12);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  body { background: var(--bg); color: #fff; overflow: hidden; width: 100vw; height: 100vh; }
+  
+  #wrap { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  video#webcam { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  canvas#canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
+
+  /* شاشة الترحيب أو البداية */
+  #overlayScreen {
+    position: absolute; inset: 0; background: rgba(5,5,5,0.85); backdrop-filter: blur(12px);
+    z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px;
+    transition: opacity 0.4s ease;
+  }
+  #overlayScreen.hidden { opacity: 0; pointer-events: none; }
+  .logo-icon { font-size: 64px; margin-bottom: 15px; animation: float 2s ease-in-out infinite; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  
+  h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: 10px; background: linear-gradient(45deg, #FFD60A, #ff9f0a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  p.desc { color: #aaa; max-width: 500px; font-size: 1rem; line-height: 1.6; margin-bottom: 25px; }
+
+  /* لوحة المعلومات العلوية */
+  .hud-panel {
+    position: absolute; top: 16px; background: var(--panel); backdrop-filter: blur(8px);
+    padding: 10px 16px; border-radius: 14px; font-size: 12px; border: 1px solid var(--border);
+    z-index: 10; display: flex; gap: 15px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  #topLeft { left: 16px; font-weight: 600; color: #ddd; max-width: 280px; line-height: 1.5; }
+  #status { right: 16px; direction: ltr; text-align: left; }
+  #status b { color: var(--primary); }
+
+  /* لوحة التحكم السفلية */
+  #controls {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 10px; z-index: 10; background: var(--panel); backdrop-filter: blur(8px);
+    padding: 10px 16px; border-radius: 999px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+
+  .btn {
+    background: rgba(255, 255, 255, 0.08); color: #fff; border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: 12px;
+    cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn:hover { background: rgba(255, 255, 255, 0.2); border-color: var(--primary); transform: translateY(-1px); }
+  .btn.active { background: var(--primary); color: #000; border-color: var(--primary); }
+  .btn.primary { background: var(--success); color: #000; border: none; }
+
+  /* العداد المركزي الكبير */
+  #count {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    font-size: 140px; font-weight: 900; color: var(--primary); z-index: 20;
+    text-shadow: 0 0 40px rgba(0,0,0,0.9); pointer-events: none;
+  }
 </style>
+
+<!-- استدعاء المكتبات الرسمية -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 </head>
 <body>
-<header><div class="logo">PUZZLE<span>FACE</span> PRO</div><div class="stats"><div class="stat">TIME: <b id="time">00:00</b></div><div class="stat">MOVES: <b id="moves">0</b></div></div></header>
-<main>
-<div class="camera-wrap" id="wrap"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="scan-line" id="scan"></div><div class="count" id="count"></div></div>
-<div class="side">
-<div class="card"><div class="levels"><div class="level active" data-n="3">3x3 سهل</div><div class="level" data-n="4">4x4 متوسط</div><div class="level" data-n="5">5x5 صعب</div></div></div>
-<button class="btn" id="startBtn">▶ ابدأ 3-2-1</button>
-<button class="btn" id="saveBtn" style="background:#222;color:#fff;display:none">📥 حفظ الصورة</button>
-<div class="card"><div style="color:#9aa0b2;font-size:13px">التحكم: <b id="handStatus" style="color:var(--accent)">جاهز</b><br>لابتوب: Pinch بالايد | موبايل: لمس واسحب</div></div>
-</div>
-</main>
-<div class="win" id="winModal"><div class="win-box"><h2>¡COMPLETADO!</h2><p id="final" style="margin:12px 0;color:#9aa0b2"></p><button class="btn" onclick="location.reload()">العب تاني</button></div></div>
-<script>
-const video=document.getElementById('video'), canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d');
-const countEl=document.getElementById('count'), scan=document.getElementById('scan'), timeEl=document.getElementById('time'), movesEl=document.getElementById('moves'), handStatus=document.getElementById('handStatus'), startBtn=document.getElementById('startBtn'), saveBtn=document.getElementById('saveBtn');
-canvas.width=640; canvas.height=480;
-let GRID=3, tiles=[], captured=null, selected=null, isCaptured=false, moves=0, timer=null, seconds=0;
-document.querySelectorAll('.level').forEach(l=>{l.onclick=()=>{document.querySelectorAll('.level').forEach(x=>x.classList.remove('active')); l.classList.add('active'); GRID=parseInt(l.dataset.n); if(isCaptured) initTiles();}});
-const hands=new Hands({locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`});
-hands.setOptions({maxNumHands:2,modelComplexity:1,minDetectionConfidence:0.6,minTrackingConfidence:0.5});
-hands.onResults(onResults);
-const cameraObj=new Camera(video,{onFrame:async()=>{await hands.send({image:video});},width:640,height:480}); cameraObj.start();
 
-function onResults(res){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(!isCaptured) return;
-  tiles.forEach(t=>{if(t===selected) return; ctx.drawImage(captured,t.sx,t.sy,t.sw,t.sh,t.x,t.y,t.w,t.h); ctx.strokeStyle=t.correct?'#00FF88':'rgba(255,255,255,.2)'; ctx.lineWidth=t.correct?2:1; ctx.strokeRect(t.x,t.y,t.w,t.h);});
-  if(res.multiHandLandmarks && res.multiHandLandmarks.length>0){
-    handStatus.textContent=`ايد متشافة - اعمل Pinch`;
-    for(const lm of res.multiHandLandmarks){
-      const thumb=lm[4], index=lm[8]; const dist=Math.hypot(thumb.x-index.x, thumb.y-index.y); const pinching=dist<0.05;
-      const hx=(1-index.x)*canvas.width; const hy=index.y*canvas.height;
-      if(pinching){
-        if(!selected){for(let i=tiles.length-1;i>=0;i--){const t=tiles[i]; if(hx>t.x&&hx<t.x+t.w&&hy>t.y&&hy<t.y+t.h){selected=t; break;}}}
-        else{selected.x=hx-selected.w/2; selected.y=hy-selected.h/2;}
-        ctx.beginPath(); ctx.arc(hx,hy,18,0,Math.PI*2); ctx.fillStyle='rgba(255,214,10,.8)'; ctx.fill();
-      }else if(selected){snapSelected();}
-      if(selected){ctx.drawImage(captured,selected.sx,selected.sy,selected.sw,selected.sh,selected.x,selected.y,selected.w,selected.h); ctx.strokeStyle='#FFD60A'; ctx.lineWidth=3; ctx.strokeRect(selected.x,selected.y,selected.w,selected.h);}
+<div id="wrap">
+  <video id="webcam" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  <div id="count"></div>
+
+  <!-- شاشة الترحيب والبدء -->
+  <div id="overlayScreen">
+    <div class="logo-icon">🧩</div>
+    <h1>Puzzle Cam Pro</h1>
+    <p class="desc">لعبة بازل ذكية تعمل بالكامل عبر إيماءات اليد باستخدام الذكاء الاصطناعي.<br>تحكم بالإطار، التقط صورتك، وركب القطع بسلاسة تامة.</p>
+    <button class="btn primary" id="startBtn" style="padding: 14px 32px; font-size: 15px;">بدء التجربة 🚀</button>
+  </div>
+
+  <!-- الـ HUD العلوي -->
+  <div id="topLeft" class="hud-panel">
+    <span id="instructionText">👋 استخدم يديك الاثنتين لتحديد حجم الإطار</span>
+  </div>
+
+  <div id="status" class="hud-panel">
+    <div>FPS: <b id="sFps">60</b></div>
+    <div>TIME: <b id="sTimer">00:00</b></div>
+    <div>MOVES: <b id="sMoves">0</b></div>
+  </div>
+
+  <!-- شريط التحكم السفلي -->
+  <div id="controls">
+    <button class="btn diff-btn" data-grid="2">2×2</button>
+    <button class="btn diff-btn active" data-grid="3">3×3</button>
+    <button class="btn diff-btn" data-grid="4">4×4</button>
+    <button class="btn" id="mirrorBtn">↔ انعكاس</button>
+    <button class="btn" id="resetBtn">🔄 إعادة ضبط</button>
+  </div>
+</div>
+
+<script>
+const video = document.getElementById('webcam');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const countEl = document.getElementById('count');
+const instructionText = document.getElementById('instructionText');
+const overlayScreen = document.getElementById('overlayScreen');
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// إعدادات اللعبة والمتغيرات
+let GRID = 3;
+let isMirroredState = false;
+let isCaptured = false;
+let capturedImg = null;
+let tiles = [], selected = null;
+let correctCount = 0;
+let movesCount = 0;
+let gameTimer = 0;
+let timerInterval = null;
+let customFrame = { x: canvas.width/2 - 200, y: canvas.height/2 - 200, w: 400, h: 400 };
+let isDefiningFrame = false;
+
+// نظام الصوت المتقدم عبر Web Audio API
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playSound(type) {
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  
+  const now = audioCtx.currentTime;
+  if (type === 'snap') {
+    osc.frequency.setValueAtTime(440, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+    gain.gain.setValueAtTime(0.15, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+    osc.start(now); osc.stop(now + 0.15);
+  } else if (type === 'tick') {
+    osc.frequency.setValueAtTime(500, now);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+    osc.start(now); osc.stop(now + 0.08);
+  } else if (type === 'win') {
+    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.frequency.setValueAtTime(f, now + i * 0.1);
+      g.gain.setValueAtTime(0.2, now + i * 0.1);
+      g.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
+      o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.3);
+    });
+  }
+}
+
+// زر بدء التشغيل
+document.getElementById('startBtn').onclick = () => {
+  overlayScreen.classList.add('hidden');
+  initCamera();
+};
+
+// أزرار التحكم
+document.getElementById('mirrorBtn').onclick = () => {
+  isMirroredState = !isMirroredState;
+  video.style.transform = isMirroredState ? 'scaleX(-1)' : 'none';
+};
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    GRID = parseInt(btn.dataset.grid);
+    if (isCaptured && capturedImg) initTiles();
+  };
+});
+
+document.getElementById('resetBtn').onclick = resetGame;
+
+function resetGame() {
+  isCaptured = false;
+  capturedImg = null;
+  tiles = [];
+  selected = null;
+  correctCount = 0;
+  movesCount = 0;
+  gameTimer = 0;
+  clearInterval(timerInterval);
+  document.getElementById('sTimer').textContent = "00:00";
+  document.getElementById('sMoves').textContent = "0";
+  window.counting = false;
+  instructionText.textContent = "👋 استخدم يديك الاثنتين لتحديد حجم الإطار";
+}
+
+// عداد الوقت
+function startTimer() {
+  gameTimer = 0;
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    gameTimer++;
+    let m = Math.floor(gameTimer / 60).toString().padStart(2, '0');
+    let s = (gameTimer % 60).toString().padStart(2, '0');
+    document.getElementById('sTimer').textContent = `${m}:${s}`;
+  }, 1000);
+}
+
+// حساب الأصابع
+function countFingers(lm) {
+  let c = 0;
+  if (lm[8].y < lm[6].y) c++;
+  if (lm[12].y < lm[10].y) c++;
+  if (lm[16].y < lm[14].y) c++;
+  if (lm[20].y < lm[18].y) c++;
+  if (Math.abs(lm[4].x - lm[3].x) > 0.03) c++;
+  return c;
+}
+
+// إعداد MediaPipe Hands
+const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+hands.setOptions({
+  maxNumHands: 2,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.75,
+  minTrackingConfidence: 0.75
+});
+
+hands.onResults(res => {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  ctx.save();
+  if (isMirroredState) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  let totalFingers = 0, handCount = 0, currentGrabs = [];
+
+  if (res.multiHandLandmarks) {
+    handCount = res.multiHandLandmarks.length;
+    for (let i = 0; i < handCount; i++) {
+      const lm = res.multiHandLandmarks[i];
+      totalFingers += countFingers(lm);
+      
+      drawConnectors(ctx, lm, HAND_CONNECTIONS, { color: 'rgba(255,255,255,0.4)', lineWidth: 2 });
+      drawLandmarks(ctx, lm, { color: '#FFD60A', lineWidth: 1, radius: 4 });
+
+      // تتبع القرص بدقة (Pinch Detection)
+      const thumb = lm[4], index = lm[8], wrist = lm[0], middleBase = lm[9];
+      const palmSize = Math.hypot(wrist.x - middleBase.x, wrist.y - middleBase.y);
+      const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y);
+      const pinchRatio = pinchDist / palmSize;
+
+      if (pinchRatio < 0.35) {
+        let hx = index.x * canvas.width;
+        let hy = index.y * canvas.height;
+        if (!isMirroredState) hx = canvas.width - hx;
+        
+        currentGrabs.push({ x: hx, y: hy, handIndex: i });
+
+        // رسم دائرة القرص التفاعلية
+        ctx.beginPath();
+        ctx.arc(hx, hy, 24, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 214, 10, 0.85)';
+        ctx.fill();
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = '#000';
+        ctx.stroke();
+      }
+    }
+  }
+
+  // --- معالجة الإطار والالتقاط ---
+  if (!isCaptured) {
+    if (currentGrabs.length === 2) {
+      isDefiningFrame = true;
+      const x1 = currentGrabs[0].x, y1 = currentGrabs[0].y;
+      const x2 = currentGrabs[1].x, y2 = currentGrabs[1].y;
+      customFrame.x = Math.min(x1, x2);
+      customFrame.y = Math.min(y1, y2);
+      let size = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1));
+      size = Math.min(Math.max(size, 200), Math.min(canvas.width, canvas.height) * 0.7);
+      customFrame.w = size; customFrame.h = size;
+      instructionText.textContent = "📐 يتم ضبط الإطار... اترك يديك للتثبيت";
+    } else if (currentGrabs.length === 0 && isDefiningFrame) {
+      isDefiningFrame = false;
+      instructionText.textContent = "✌️ تم التثبيت! ارفع إصبعين لالتقاط الصورة";
+    }
+
+    // رسم الإطار التوجيهي
+    ctx.strokeStyle = '#FFD60A';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(customFrame.x, customFrame.y, customFrame.w, customFrame.h);
+    ctx.fillStyle = 'rgba(255, 214, 10, 0.08)';
+    ctx.fillRect(customFrame.x, customFrame.y, customFrame.w, customFrame.h);
+
+    if (handCount > 0 && totalFingers >= 2 && !window.counting && !isDefiningFrame && currentGrabs.length === 0) {
+      startCountdown();
+    }
+  } else {
+    // --- مرحلة اللعب وتتبع القطع بنعومة تامة (Lerp Physics) ---
+    if (currentGrabs.length > 0) {
+      if (!selected) {
+        for (let grab of currentGrabs) {
+          for (let t of [...tiles].reverse()) {
+            if (!t.done && grab.x > t.x && grab.x < t.x + t.w && grab.y > t.y && grab.y < t.y + t.h) {
+              selected = t;
+              selected.grabHand = grab.handIndex;
+              movesCount++;
+              document.getElementById('sMoves').textContent = movesCount;
+              break;
+            }
+          }
+          if (selected) break;
+        }
+      }
+      if (selected) {
+        let myGrab = currentGrabs.find(g => g.handIndex === selected.grabHand) || currentGrabs[0];
+        if (myGrab) {
+          // Linear Interpolation لجعل الحركة ناعمة بدون اهتزاز
+          let targetX = myGrab.x - selected.w / 2;
+          let targetY = myGrab.y - selected.h / 2;
+          selected.x += (targetX - selected.x) * 0.35;
+          selected.y += (targetY - selected.y) * 0.35;
+        }
+      }
+    } else if (selected) {
+      checkSnap(selected);
+      selected = null;
+    }
+
+    if (capturedImg) {
+      const fw = customFrame.x, fh = customFrame.y;
+      
+      ctx.strokeStyle = 'rgba(255, 214, 10, 0.3)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(fw, fh, customFrame.w, customFrame.h);
+
+      tiles.forEach(t => {
+        if (t === selected) return;
+        if (t.done) {
+          ctx.drawImage(capturedImg, t.sx, t.sy, t.sw, t.sh, t.ox, t.oy, t.w, t.h);
+          ctx.strokeStyle = '#00FF88'; ctx.lineWidth = 2;
+          ctx.strokeRect(t.ox, t.oy, t.w, t.h);
+        } else {
+          ctx.drawImage(capturedImg, t.sx, t.sy, t.sw, t.sh, t.x, t.y, t.w, t.h);
+          ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+          ctx.strokeRect(t.x, t.y, t.w, t.h);
+        }
+      });
+
+      if (selected) {
+        ctx.drawImage(capturedImg, selected.sx, selected.sy, selected.sw, selected.sh, selected.x, selected.y, selected.w, selected.h);
+        ctx.strokeStyle = '#FFD60A'; ctx.lineWidth = 4;
+        ctx.strokeRect(selected.x, selected.y, selected.w, selected.h);
+      }
+    }
+  }
+});
+
+async function startCountdown() {
+  if (isCaptured || window.counting) return;
+  window.counting = true;
+  instructionText.textContent = "📸 استعد... جارِ الالتقاط";
+
+  for (let i = 3; i >= 1; i--) {
+    countEl.textContent = i;
+    playSound('tick');
+    await new Promise(r => setTimeout(r, 700));
+  }
+  countEl.textContent = '';
+
+  const sizeW = customFrame.w, sizeH = customFrame.h;
+  const tmp = document.createElement('canvas');
+  tmp.width = sizeW; tmp.height = sizeH;
+  const tctx = tmp.getContext('2d');
+
+  const tempV = document.createElement('canvas');
+  tempV.width = canvas.width; tempV.height = canvas.height;
+  const tvCtx = tempV.getContext('2d');
+
+  if (isMirroredState) { tvCtx.translate(canvas.width, 0); tvCtx.scale(-1, 1); }
+  tvCtx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  tctx.drawImage(tempV, customFrame.x, customFrame.y, sizeW, sizeH, 0, 0, sizeW, sizeH);
+
+  capturedImg = tmp;
+  initTiles();
+  isCaptured = true;
+  window.counting = false;
+  startTimer();
+  instructionText.textContent = "🧩 اقرص القطع ورتبها في مكانها الصحيح";
+}
+
+function initTiles() {
+  const fw = customFrame.x, fh = customFrame.y, size = customFrame.w;
+  const tw = size / GRID, th = size / GRID;
+  let pos = [];
+  for (let r = 0; r < GRID; r++) for (let c = 0; c < GRID; c++) pos.push({ r, c });
+  pos.sort(() => Math.random() - 0.5);
+
+  tiles = [];
+  let k = 0;
+  for (let r = 0; r < GRID; r++) {
+    for (let c = 0; c < GRID; c++) {
+      const p = pos[k++];
+      tiles.push({
+        sx: c * capturedImg.width / GRID, sy: r * capturedImg.height / GRID,
+        sw: capturedImg.width / GRID, sh: capturedImg.height / GRID,
+        x: fw + p.c * tw, y: fh + p.r * th,
+        w: tw, h: th,
+        ox: fw + c * tw, oy: fh + r * th,
+        done: false
+      });
+    }
+  }
+  correctCount = 0;
+}
+
+function checkSnap(t) {
+  const threshold = (customFrame.w / GRID) * 0.35;
+  const dist = Math.hypot(t.x - t.ox, t.y - t.oy);
+  if (dist < threshold) {
+    t.x = t.ox; t.y = t.oy;
+    t.done = true;
+    correctCount++;
+    playSound('snap');
+
+    if (correctCount === GRID * GRID) {
+      clearInterval(timerInterval);
+      playSound('win');
+      confetti({ particleCount: 300, spread: 120, origin: { y: 0.6 } });
+      instructionText.textContent = "🏆 مبروك! أكملت البازل بنجاح تام";
     }
   }
 }
-function snapSelected(){
-  if(!selected) return;
-  const d=Math.hypot(selected.x-selected.ox, selected.y-selected.oy);
-  if(d<35){selected.x=selected.ox; selected.y=selected.oy; if(!selected.correct){selected.correct=true; moves++; movesEl.textContent=moves;}}
-  selected=null; checkWin();
-}
-function initTiles(){
-  const size=Math.min(300, canvas.width*0.7); const sx=(canvas.width-size)/2, sy=(canvas.height-size)/2; const tileW=size/GRID, tileH=size/GRID;
-  const imgW=captured.width, imgH=captured.height; tiles=[]; let pos=[]; for(let r=0;r<GRID;r++) for(let c=0;c<GRID;c++) pos.push({r,c}); pos.sort(()=>Math.random()-.5); let k=0;
-  for(let r=0;r<GRID;r++) for(let c=0;c<GRID;c++){const p=pos[k++]; tiles.push({sx:c*imgW/GRID, sy:r*imgH/GRID, sw:imgW/GRID, sh:imgH/GRID, x:sx+p.c*tileW, y:sy+p.r*tileH, w:tileW, h:tileH, ox:sx+c*tileW, oy:sy+r*tileH, correct:false});}
-  moves=0; movesEl.textContent='0'; seconds=0; clearInterval(timer); timer=setInterval(()=>{seconds++; timeEl.textContent=`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`},1000);
-}
-function checkWin(){if(tiles.length>0 && tiles.every(t=>t.correct)){clearInterval(timer); confetti({particleCount:220,spread:90,origin:{y:.6}}); document.getElementById('final').textContent=`خلصتها في ${timeEl.textContent} بـ ${moves} حركة`; document.getElementById('winModal').classList.add('show'); saveBtn.style.display='block';}}
-async function doCapture(){for(let i=3;i>0;i--){countEl.textContent=i; await new Promise(r=>setTimeout(r,700));} countEl.textContent=''; scan.style.display='none'; const size=300; const tmp=document.createElement('canvas'); tmp.width=size; tmp.height=size; const tctx=tmp.getContext('2d'); tctx.translate(size,0); tctx.scale(-1,1); tctx.drawImage(video,0,0,640,480,0,0,size,size); captured=tmp; isCaptured=true; initTiles(); startBtn.textContent='↻ إعادة';}
-startBtn.onclick=doCapture;
-saveBtn.onclick=()=>{const out=document.createElement('canvas'); out.width=300; out.height=300; const octx=out.getContext('2d'); tiles.forEach(t=>{octx.drawImage(captured,t.sx,t.sy,t.sw,t.sh,t.ox,t.oy,t.w,t.h);}); const a=document.createElement('a'); a.download=`puzzle-${Date.now()}.png`; a.href=out.toDataURL(); a.click();};
 
-// --- MOBILE TOUCH ---
-let touchTile=null;
-function getTouchPos(touch){
-  const rect=canvas.getBoundingClientRect();
-  return {x:(touch.clientX-rect.left)*(canvas.width/rect.width), y:(touch.clientY-rect.top)*(canvas.height/rect.height)};
+function initCamera() {
+  const cameraObj = new Camera(video, {
+    onFrame: async () => { await hands.send({ image: video }); },
+    width: 1280,
+    height: 720
+  });
+  cameraObj.start();
 }
-canvas.addEventListener('touchstart', e=>{
-  if(!isCaptured) return; const p=getTouchPos(e.touches[0]);
-  for(let i=tiles.length-1;i>=0;i--){const tl=tiles[i]; if(p.x>tl.x&&p.x<tl.x+tl.w&&p.y>tl.y&&p.y<tl.y+tl.h){touchTile=tl; selected=tl; break;}}
-},{passive:false});
-canvas.addEventListener('touchmove', e=>{
-  e.preventDefault(); if(!touchTile) return; const p=getTouchPos(e.touches[0]); touchTile.x=p.x-touchTile.w/2; touchTile.y=p.y-touchTile.h/2;
-},{passive:false});
-canvas.addEventListener('touchend', e=>{
-  if(!touchTile) return; const d=Math.hypot(touchTile.x-touchTile.ox, touchTile.y-touchTile.oy);
-  if(d<35){touchTile.x=touchTile.ox; touchTile.y=touchTile.oy; if(!touchTile.correct){touchTile.correct=true; moves++; movesEl.textContent=moves;}}
-  touchTile=null; selected=null; checkWin();
-});
 </script>
 </body>
 </html>
